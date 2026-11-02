@@ -38,4 +38,6 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "BudsTray $GITHUB_REF_NAME" --generate-notes
+        run: |
+          notes='`BudsTray-win-x64.exe` works on its own. `BudsTray-win-x64-requires-dotnet.exe` is smaller but needs the .NET 10 Desktop Runtime. The files are not signed, so Windows SmartScreen may warn you the first time: choose **More info**, then **Run anyway**.'
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "BudsTray $GITHUB_REF_NAME" --notes "$notes" --generate-notes
