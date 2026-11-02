@@ -1,0 +1,41 @@
+name: Release
+
+# Push a tag such as v0.2.0 to test, build and publish a GitHub release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test
+        run: dotnet test tests/BudsTray.Tests -c Release
+
+      - name: Build
+        shell: bash
+        run: |
+          common="src/BudsTray/BudsTray.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:Version=${GITHUB_REF_NAME#v}"
+          dotnet publish $common --self-contained true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o out/standalone
+          # Output left by the build above makes the next exe crash on startup.
+          rm -rf src/BudsTray/bin src/BudsTray/obj
+          dotnet publish $common --self-contained false -o out/runtime
+          mkdir dist
+          cp out/standalone/BudsTray.exe dist/BudsTray-win-x64.exe
+          cp out/runtime/BudsTray.exe dist/BudsTray-win-x64-requires-dotnet.exe
+          (cd dist && sha256sum *.exe > SHA256SUMS.txt)
+
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "BudsTray $GITHUB_REF_NAME" --generate-notes

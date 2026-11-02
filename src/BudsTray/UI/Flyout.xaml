@@ -1,0 +1,164 @@
+<Window x:Class="BudsTray.UI.Flyout"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:BudsTray.UI"
+        Title="BudsTray"
+        Width="372"
+        SizeToContent="Height"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ShowActivated="True"
+        TextOptions.TextFormattingMode="Display"
+        UseLayoutRounding="True">
+
+    <!-- The margin is the room the drop shadow needs inside the transparent window. -->
+    <Border x:Name="Card" Margin="16" CornerRadius="20" Background="{StaticResource Background}"
+            BorderBrush="{StaticResource Hairline}" BorderThickness="1" Padding="20,18,20,14">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="16" ShadowDepth="2" Opacity="0.5" />
+        </Border.Effect>
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="Slide" />
+        </Border.RenderTransform>
+
+        <DockPanel>
+            <!-- Header -->
+            <DockPanel DockPanel.Dock="Top" LastChildFill="False">
+                <TextBlock x:Name="NameText" DockPanel.Dock="Left" Style="{StaticResource Caption}"
+                           Foreground="{StaticResource Text}" FontSize="12" />
+                <Ellipse x:Name="StatusDot" DockPanel.Dock="Right" Width="8" Height="8" VerticalAlignment="Center"
+                         Fill="{StaticResource Text}" />
+                <TextBlock x:Name="StatusText" DockPanel.Dock="Right" Style="{StaticResource Caption}" Margin="0,0,8,0" />
+            </DockPanel>
+
+            <!-- Shown when the buds are away -->
+            <StackPanel x:Name="OfflineView" DockPanel.Dock="Top" Margin="0,18,0,0">
+                <TextBlock Style="{StaticResource RowLabel}" Text="Наушники не подключены" FontSize="16" />
+                <TextBlock Style="{StaticResource RowLabel}" Margin="0,6,0,0" Foreground="{StaticResource Dim}" TextWrapping="Wrap"
+                           Text="Иконка появится в трее, как только они подключатся к этому компьютеру. Приложение ждёт в фоне и почти ничего не потребляет." />
+                <DockPanel Margin="0,16,0,0">
+                    <ToggleButton x:Name="AutoStartSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}"
+                                  AutomationProperties.Name="Запускать с Windows" Click="OnAutoStartClick" />
+                    <TextBlock Style="{StaticResource RowLabel}" Text="Запускать с Windows" />
+                </DockPanel>
+                <ToggleButton x:Name="QuitButton" Style="{StaticResource Segment}" Margin="0,14,0,0" Content="ВЫЙТИ ИЗ ПРИЛОЖЕНИЯ"
+                              Click="OnQuitClick" />
+            </StackPanel>
+
+            <!-- Shown when the buds are connected. Scrolls only if the screen is too small for it. -->
+            <ScrollViewer VerticalScrollBarVisibility="Hidden" Focusable="False">
+                <StackPanel x:Name="OnlineView">
+                    <Grid Margin="0,20,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <ui:DotMatrixNumber x:Name="LeftNumber" Pitch="8" HorizontalAlignment="Left" />
+                            <TextBlock x:Name="LeftCaption" Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <ui:DotMatrixNumber x:Name="RightNumber" Pitch="8" HorizontalAlignment="Left" />
+                            <TextBlock x:Name="RightCaption" Style="{StaticResource Caption}" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock x:Name="CaseCaption" Style="{StaticResource Caption}" Margin="0,10,0,0" />
+                    <TextBlock x:Name="ForecastCaption" Style="{StaticResource Caption}" Margin="0,4,0,0" />
+
+                    <Border Height="1" Background="{StaticResource Hairline}" Margin="0,14" />
+
+                    <StackPanel x:Name="Controls">
+                        <!-- Noise control -->
+                        <UniformGrid x:Name="AncGrid" Rows="1" Margin="-2,0" />
+                        <UniformGrid x:Name="AncLevelGrid" Rows="1" Margin="-2,4,-2,0" />
+
+                        <!-- Equaliser -->
+                        <StackPanel x:Name="EqSection" Margin="0,10,0,0">
+                            <ToggleButton x:Name="EqDisclosure" Style="{StaticResource Disclosure}" AutomationProperties.Name="Эквалайзер">
+                                <DockPanel>
+                                    <TextBlock x:Name="EqChevron" DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="›" Margin="10,0,0,0" FontSize="14" />
+                                    <TextBlock x:Name="EqValue" DockPanel.Dock="Right" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Эквалайзер" />
+                                </DockPanel>
+                            </ToggleButton>
+                            <UniformGrid x:Name="EqGrid" Columns="3" Margin="-2,4,-2,0" />
+                        </StackPanel>
+
+                        <!-- Ultra Bass -->
+                        <StackPanel x:Name="BassSection" Margin="0,8,0,0">
+                            <TextBlock Style="{StaticResource RowLabel}" Text="Ultra Bass" />
+                            <UniformGrid x:Name="BassGrid" Rows="1" Margin="-2,6,-2,0" />
+                        </StackPanel>
+
+                        <!-- Switches -->
+                        <DockPanel Margin="0,12,0,0">
+                            <ToggleButton x:Name="LatencySwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}"
+                                          AutomationProperties.Name="Низкая задержка" Click="OnLatencyClick" />
+                            <TextBlock Style="{StaticResource RowLabel}" Text="Низкая задержка" />
+                        </DockPanel>
+                        <DockPanel Margin="0,10,0,0">
+                            <ToggleButton x:Name="InEarSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}"
+                                          AutomationProperties.Name="Определение ношения" Click="OnInEarClick" />
+                            <TextBlock Style="{StaticResource RowLabel}" Text="Определение ношения" />
+                        </DockPanel>
+
+                        <!-- Charge history -->
+                        <StackPanel Margin="0,8,0,0">
+                            <ToggleButton x:Name="HistoryDisclosure" Style="{StaticResource Disclosure}" AutomationProperties.Name="История заряда">
+                                <DockPanel>
+                                    <TextBlock x:Name="HistoryChevron" DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="›" FontSize="14" />
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="История заряда" />
+                                </DockPanel>
+                            </ToggleButton>
+                            <StackPanel x:Name="HistorySection">
+                                <ui:DotChart x:Name="Chart" Margin="0,6,0,0" HorizontalAlignment="Left" GridBrush="{StaticResource Hairline}"
+                                             LeftBrush="{StaticResource Text}" RightBrush="{StaticResource Dim}" />
+                                <TextBlock Style="{StaticResource Caption}" Margin="0,8,0,0">
+                                    <Run Foreground="{StaticResource Text}" Text="● LEFT" />
+                                    <Run Text="  ● RIGHT" />
+                                </TextBlock>
+                                <TextBlock x:Name="RateCaption" Style="{StaticResource Caption}" Margin="0,4,0,0" />
+                                <UniformGrid x:Name="RangeGrid" Rows="1" Margin="-2,6,-2,0" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Application profiles -->
+                        <StackPanel Margin="0,2,0,0">
+                            <ToggleButton x:Name="ProfilesDisclosure" Style="{StaticResource Disclosure}" AutomationProperties.Name="Профили приложений">
+                                <DockPanel>
+                                    <TextBlock x:Name="ProfilesChevron" DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="›" Margin="10,0,0,0" FontSize="14" />
+                                    <TextBlock x:Name="ProfilesValue" DockPanel.Dock="Right" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Профили приложений" />
+                                </DockPanel>
+                            </ToggleButton>
+                            <ui:ProfilesPanel x:Name="ProfilesSection" />
+                        </StackPanel>
+
+                        <!-- Find -->
+                        <StackPanel Margin="0,2,0,0">
+                            <ToggleButton x:Name="FindDisclosure" Style="{StaticResource Disclosure}" AutomationProperties.Name="Найти наушники">
+                                <DockPanel>
+                                    <TextBlock x:Name="FindChevron" DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="›" FontSize="14" />
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="Найти наушники" />
+                                </DockPanel>
+                            </ToggleButton>
+                            <StackPanel x:Name="FindSection">
+                                <TextBlock x:Name="FindHint" Style="{StaticResource Caption}" Margin="0,4,0,6" TextWrapping="Wrap" Foreground="{StaticResource Red}" />
+                                <UniformGrid x:Name="FindGrid" Rows="1" Margin="-2,0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <DockPanel Margin="0,12,0,0">
+                        <TextBlock x:Name="HotkeyText" DockPanel.Dock="Right" Style="{StaticResource Caption}" FontSize="10" />
+                        <TextBlock x:Name="FirmwareText" Style="{StaticResource Caption}" FontSize="10" />
+                    </DockPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</Window>
