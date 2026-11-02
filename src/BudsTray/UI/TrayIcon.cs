@@ -17,13 +17,19 @@ public sealed class TrayIcon : IDisposable
     private const int NotificationMilliseconds = 5000;
 
     private readonly BudsState _state;
+    private readonly AppSettings _settings;
     private readonly NotifyIcon _icon;
+    private readonly Action _open;
+    private readonly Action _quit;
     private Icon? _current;
 
-    public TrayIcon(BudsState state, Action open, Action toggleTransparency, Action quit)
+    public TrayIcon(BudsState state, AppSettings settings, Action open, Action toggleTransparency, Action quit)
     {
         _state = state;
-        _icon = new NotifyIcon { ContextMenuStrip = BuildMenu(open, quit) };
+        _settings = settings;
+        _open = open;
+        _quit = quit;
+        _icon = new NotifyIcon { ContextMenuStrip = BuildMenu() };
         _icon.MouseClick += (_, e) =>
         {
             if (e.Button == MouseButtons.Left)
@@ -41,6 +47,15 @@ public sealed class TrayIcon : IDisposable
     {
         get => _icon.Visible;
         set => _icon.Visible = value;
+    }
+
+    /// <summary>Shows the texts of the language that was just selected.</summary>
+    public void RefreshTexts()
+    {
+        ContextMenuStrip old = _icon.ContextMenuStrip!;
+        _icon.ContextMenuStrip = BuildMenu();
+        old.Dispose();
+        Redraw();
     }
 
     public void Notify(string title, string text) => _icon.ShowBalloonTip(NotificationMilliseconds, title, text, ToolTipIcon.None);
@@ -76,12 +91,12 @@ public sealed class TrayIcon : IDisposable
         var lines = new List<string> { string.IsNullOrEmpty(_state.Name) ? "BudsTray" : _state.Name };
         if (_state.Link != LinkState.Online)
         {
-            lines.Add("Подключаюсь…");
+            lines.Add(Strings.Current.Connecting);
         }
         else
         {
             lines.Add($"L {Percent(_state.Left)} · R {Percent(_state.Right)}"
-                + (_state.CaseLevel is { } level ? $" · Кейс {level}%" : ""));
+                + (_state.CaseLevel is { } level ? $" · {Strings.Current.TooltipCase} {level}%" : ""));
             if (Labels.Anc(_state.Anc) is { } anc)
                 lines.Add(anc);
         }
@@ -99,7 +114,7 @@ public sealed class TrayIcon : IDisposable
         return key?.GetValue("SystemUsesLightTheme") is int value && value != 0;
     }
 
-    private static ContextMenuStrip BuildMenu(Action open, Action quit)
+    private ContextMenuStrip BuildMenu()
     {
         var menu = new ContextMenuStrip
         {
@@ -110,14 +125,25 @@ public sealed class TrayIcon : IDisposable
             ForeColor = Color.FromArgb(0xF4, 0xF4, 0xF4),
         };
 
-        menu.Items.Add("Открыть панель", null, (_, _) => open());
-        var autoStart = new ToolStripMenuItem("Запускать с Windows") { CheckOnClick = true };
+        menu.Items.Add(Strings.Current.OpenPanel, null, (_, _) => _open());
+        var autoStart = new ToolStripMenuItem(Strings.Current.StartWithWindows) { CheckOnClick = true };
         autoStart.CheckedChanged += (_, _) => AutoStart.IsEnabled = autoStart.Checked;
         menu.Items.Add(autoStart);
+        var popup = new ToolStripMenuItem(Strings.Current.ConnectionPopup) { CheckOnClick = true };
+        popup.Click += (_, _) =>
+        {
+            _settings.ConnectionPopup = popup.Checked;
+            _settings.Save();
+        };
+        menu.Items.Add(popup);
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Выход", null, (_, _) => quit());
+        menu.Items.Add(Strings.Current.Quit, null, (_, _) => _quit());
 
-        menu.Opening += (_, _) => autoStart.Checked = AutoStart.IsEnabled;
+        menu.Opening += (_, _) =>
+        {
+            autoStart.Checked = AutoStart.IsEnabled;
+            popup.Checked = _settings.ConnectionPopup;
+        };
         return menu;
     }
 

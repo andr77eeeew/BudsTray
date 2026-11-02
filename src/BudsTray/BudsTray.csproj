@@ -11,7 +11,7 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <RootNamespace>BudsTray</RootNamespace>
     <AssemblyName>BudsTray</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
     <TieredPGO>false</TieredPGO>
   </PropertyGroup>

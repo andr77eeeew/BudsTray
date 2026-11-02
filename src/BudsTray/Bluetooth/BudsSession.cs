@@ -165,7 +165,7 @@ public sealed class BudsSession
             }
             catch (Exception e) when (!token.IsCancellationRequested)
             {
-                Log.Info($"Control channel failed: {e.GetType().Name}: {e.Message}");
+                Log.Info($"Control channel failed: {e.GetType().Name} 0x{e.HResult:X8}: {e.Message}");
             }
             catch (Exception)
             {

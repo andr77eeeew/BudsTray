@@ -1,0 +1,38 @@
+<Window x:Class="BudsTray.UI.BudsPopup"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="BudsTray"
+        Width="372"
+        SizeToContent="Height"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ShowActivated="False"
+        TextOptions.TextFormattingMode="Display"
+        UseLayoutRounding="True">
+
+    <!-- The margin is the room the drop shadow needs inside the transparent window. -->
+    <Border x:Name="Card" Margin="16" CornerRadius="20" Background="{StaticResource Background}" Opacity="0" Cursor="Hand"
+            BorderBrush="{StaticResource Hairline}" BorderThickness="1" Padding="16,16,16,14">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="16" ShadowDepth="2" Opacity="0.5" />
+        </Border.Effect>
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="Slide" />
+        </Border.RenderTransform>
+
+        <StackPanel>
+            <DockPanel LastChildFill="False" Margin="4,0">
+                <TextBlock x:Name="NameText" DockPanel.Dock="Left" Style="{StaticResource Caption}"
+                           Foreground="{StaticResource Text}" FontSize="12" />
+                <Ellipse x:Name="StatusDot" DockPanel.Dock="Right" Width="8" Height="8" VerticalAlignment="Center" />
+                <TextBlock x:Name="StatusText" DockPanel.Dock="Right" Style="{StaticResource Caption}" Margin="0,0,8,0" />
+            </DockPanel>
+
+            <UniformGrid x:Name="Columns" Rows="1" Margin="0,16,0,0" />
+        </StackPanel>
+    </Border>
+</Window>

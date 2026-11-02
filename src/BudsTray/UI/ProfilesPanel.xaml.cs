@@ -51,12 +51,12 @@ public partial class ProfilesPanel : UserControl
         _ancOff = Segment("OFF", AncChoice, () => _anc = AncMode.Off);
 
         _latencyNone = Segment("—", LatencyChoice, () => _latency = null);
-        _latencyOn = Segment("ВКЛ", LatencyChoice, () => _latency = true);
-        _latencyOff = Segment("ВЫКЛ", LatencyChoice, () => _latency = false);
+        _latencyOn = Segment(Strings.Current.On, LatencyChoice, () => _latency = true);
+        _latencyOff = Segment(Strings.Current.Off, LatencyChoice, () => _latency = false);
 
-        _save = Segment("СОХРАНИТЬ", EditorButtons, Save);
-        _remove = Segment("УДАЛИТЬ", EditorButtons, Remove);
-        Segment("ОТМЕНА", EditorButtons, CloseEditor);
+        _save = Segment(Strings.Current.Save, EditorButtons, Save);
+        _remove = Segment(Strings.Current.Delete, EditorButtons, Remove);
+        Segment(Strings.Current.Cancel, EditorButtons, CloseEditor);
     }
 
     private ToggleButton Segment(string text, Panel host, Action onClick)

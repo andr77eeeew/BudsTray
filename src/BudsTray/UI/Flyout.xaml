@@ -33,19 +33,25 @@
                 <Ellipse x:Name="StatusDot" DockPanel.Dock="Right" Width="8" Height="8" VerticalAlignment="Center"
                          Fill="{StaticResource Text}" />
                 <TextBlock x:Name="StatusText" DockPanel.Dock="Right" Style="{StaticResource Caption}" Margin="0,0,8,0" />
+                <StackPanel x:Name="LanguagePicker" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,-3,6,-3" />
             </DockPanel>
 
             <!-- Shown when the buds are away -->
             <StackPanel x:Name="OfflineView" DockPanel.Dock="Top" Margin="0,18,0,0">
-                <TextBlock Style="{StaticResource RowLabel}" Text="Наушники не подключены" FontSize="16" />
+                <TextBlock Style="{StaticResource RowLabel}" Text="{Binding NotConnected}" FontSize="16" />
                 <TextBlock Style="{StaticResource RowLabel}" Margin="0,6,0,0" Foreground="{StaticResource Dim}" TextWrapping="Wrap"
-                           Text="Иконка появится в трее, как только они подключатся к этому компьютеру. Приложение ждёт в фоне и почти ничего не потребляет." />
+                           Text="{Binding NotConnectedHint}" />
                 <DockPanel Margin="0,16,0,0">
                     <ToggleButton x:Name="AutoStartSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}"
-                                  AutomationProperties.Name="Запускать с Windows" Click="OnAutoStartClick" />
-                    <TextBlock Style="{StaticResource RowLabel}" Text="Запускать с Windows" />
+                                  AutomationProperties.Name="{Binding StartWithWindows}" Click="OnAutoStartClick" />
+                    <TextBlock Style="{StaticResource RowLabel}" Text="{Binding StartWithWindows}" />
                 </DockPanel>
-                <ToggleButton x:Name="QuitButton" Style="{StaticResource Segment}" Margin="0,14,0,0" Content="ВЫЙТИ ИЗ ПРИЛОЖЕНИЯ"
+                <DockPanel Margin="0,10,0,0">
+                    <ToggleButton x:Name="OfflinePopupSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}"
+                                  AutomationProperties.Name="{Binding ConnectionPopup}" Click="OnPopupClick" />
+                    <TextBlock Style="{StaticResource RowLabel}" Text="{Binding ConnectionPopup}" />
+                </DockPanel>
+                <ToggleButton x:Name="QuitButton" Style="{StaticResource Segment}" Margin="0,14,0,0" Content="{Binding QuitApp}"
                               Click="OnQuitClick" />
             </StackPanel>
 
@@ -58,11 +64,12 @@
                             <ColumnDefinition />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <ui:DotMatrixNumber x:Name="LeftNumber" Pitch="8" HorizontalAlignment="Left" />
+                            <!-- This pitch keeps "100 100" apart: two full columns of digits must not read as one number. -->
+                            <ui:DotMatrixNumber x:Name="LeftNumber" Pitch="7" HorizontalAlignment="Left" />
                             <TextBlock x:Name="LeftCaption" Style="{StaticResource Caption}" Margin="0,8,0,0" />
                         </StackPanel>
                         <StackPanel Grid.Column="1">
-                            <ui:DotMatrixNumber x:Name="RightNumber" Pitch="8" HorizontalAlignment="Left" />
+                            <ui:DotMatrixNumber x:Name="RightNumber" Pitch="7" HorizontalAlignment="Left" />
                             <TextBlock x:Name="RightCaption" Style="{StaticResource Caption}" Margin="0,8,0,0" />
                         </StackPanel>
                     </Grid>
@@ -78,11 +85,11 @@
 
                         <!-- Equaliser -->
                         <StackPanel x:Name="EqSection" Margin="0,10,0,0">
-                            <ToggleButton x:Name="EqDisclosure" Style="{StaticResource Disclosure}" AutomationProperties.Name="Эквалайзер">
+                            <ToggleButton x:Name="EqDisclosure" Style="{StaticResource Disclosure}" AutomationProperties.Name="{Binding Equalizer}">
                                 <DockPanel>
                                     <TextBlock x:Name="EqChevron" DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="›" Margin="10,0,0,0" FontSize="14" />
                                     <TextBlock x:Name="EqValue" DockPanel.Dock="Right" Style="{StaticResource Caption}" VerticalAlignment="Center" />
-                                    <TextBlock Style="{StaticResource RowLabel}" Text="Эквалайзер" />
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="{Binding Equalizer}" />
                                 </DockPanel>
                             </ToggleButton>
                             <UniformGrid x:Name="EqGrid" Columns="3" Margin="-2,4,-2,0" />
@@ -97,21 +104,21 @@
                         <!-- Switches -->
                         <DockPanel Margin="0,12,0,0">
                             <ToggleButton x:Name="LatencySwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}"
-                                          AutomationProperties.Name="Низкая задержка" Click="OnLatencyClick" />
-                            <TextBlock Style="{StaticResource RowLabel}" Text="Низкая задержка" />
+                                          AutomationProperties.Name="{Binding LowLatency}" Click="OnLatencyClick" />
+                            <TextBlock Style="{StaticResource RowLabel}" Text="{Binding LowLatency}" />
                         </DockPanel>
                         <DockPanel Margin="0,10,0,0">
                             <ToggleButton x:Name="InEarSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}"
-                                          AutomationProperties.Name="Определение ношения" Click="OnInEarClick" />
-                            <TextBlock Style="{StaticResource RowLabel}" Text="Определение ношения" />
+                                          AutomationProperties.Name="{Binding InEarDetection}" Click="OnInEarClick" />
+                            <TextBlock Style="{StaticResource RowLabel}" Text="{Binding InEarDetection}" />
                         </DockPanel>
 
                         <!-- Charge history -->
                         <StackPanel Margin="0,8,0,0">
-                            <ToggleButton x:Name="HistoryDisclosure" Style="{StaticResource Disclosure}" AutomationProperties.Name="История заряда">
+                            <ToggleButton x:Name="HistoryDisclosure" Style="{StaticResource Disclosure}" AutomationProperties.Name="{Binding BatteryHistory}">
                                 <DockPanel>
                                     <TextBlock x:Name="HistoryChevron" DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="›" FontSize="14" />
-                                    <TextBlock Style="{StaticResource RowLabel}" Text="История заряда" />
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="{Binding BatteryHistory}" />
                                 </DockPanel>
                             </ToggleButton>
                             <StackPanel x:Name="HistorySection">
@@ -128,11 +135,11 @@
 
                         <!-- Application profiles -->
                         <StackPanel Margin="0,2,0,0">
-                            <ToggleButton x:Name="ProfilesDisclosure" Style="{StaticResource Disclosure}" AutomationProperties.Name="Профили приложений">
+                            <ToggleButton x:Name="ProfilesDisclosure" Style="{StaticResource Disclosure}" AutomationProperties.Name="{Binding AppProfiles}">
                                 <DockPanel>
                                     <TextBlock x:Name="ProfilesChevron" DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="›" Margin="10,0,0,0" FontSize="14" />
                                     <TextBlock x:Name="ProfilesValue" DockPanel.Dock="Right" Style="{StaticResource Caption}" VerticalAlignment="Center" />
-                                    <TextBlock Style="{StaticResource RowLabel}" Text="Профили приложений" />
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="{Binding AppProfiles}" />
                                 </DockPanel>
                             </ToggleButton>
                             <ui:ProfilesPanel x:Name="ProfilesSection" />
@@ -140,10 +147,10 @@
 
                         <!-- Find -->
                         <StackPanel Margin="0,2,0,0">
-                            <ToggleButton x:Name="FindDisclosure" Style="{StaticResource Disclosure}" AutomationProperties.Name="Найти наушники">
+                            <ToggleButton x:Name="FindDisclosure" Style="{StaticResource Disclosure}" AutomationProperties.Name="{Binding FindBuds}">
                                 <DockPanel>
                                     <TextBlock x:Name="FindChevron" DockPanel.Dock="Right" Style="{StaticResource Caption}" Text="›" FontSize="14" />
-                                    <TextBlock Style="{StaticResource RowLabel}" Text="Найти наушники" />
+                                    <TextBlock Style="{StaticResource RowLabel}" Text="{Binding FindBuds}" />
                                 </DockPanel>
                             </ToggleButton>
                             <StackPanel x:Name="FindSection">
@@ -152,6 +159,13 @@
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
+
+                    <!-- A setting of the app, so it works while the buds are still connecting. -->
+                    <DockPanel Margin="0,8,0,0">
+                        <ToggleButton x:Name="PopupSwitch" DockPanel.Dock="Right" Style="{StaticResource Switch}"
+                                      AutomationProperties.Name="{Binding ConnectionPopup}" Click="OnPopupClick" />
+                        <TextBlock Style="{StaticResource RowLabel}" Text="{Binding ConnectionPopup}" />
+                    </DockPanel>
 
                     <DockPanel Margin="0,12,0,0">
                         <TextBlock x:Name="HotkeyText" DockPanel.Dock="Right" Style="{StaticResource Caption}" FontSize="10" />

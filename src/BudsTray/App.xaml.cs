@@ -30,6 +30,8 @@ public partial class App : Application
     private BudsState? _state;
     private BudsSession? _session;
     private Flyout? _flyout;
+    private BudsPopup? _popup;
+    private AppSettings? _settings;
     private DateTime _flyoutClosedAt = DateTime.MinValue;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -48,9 +50,12 @@ public partial class App : Application
             return;
         }
 
+        AppSettings settings = _settings = AppSettings.Load();
+        Strings.Select(settings.Language);
+
         var state = _state = new BudsState();
         var session = _session = new BudsSession(state);
-        _tray = new TrayIcon(state, ToggleFlyout, () => _ = session.ToggleTransparencyAsync(), Quit);
+        _tray = new TrayIcon(state, settings, ToggleFlyout, () => _ = session.ToggleTransparencyAsync(), Quit);
 
         var hotkey = _hotkey = new GlobalHotkey();
         hotkey.Pressed += () => _ = session.ToggleTransparencyAsync();
@@ -61,23 +66,40 @@ public partial class App : Application
         history.Compact(DateTime.UtcNow);
 
         var alerts = new LowBatteryAlerts();
+        var connectionPopup = new ConnectionPopupPolicy(DateTime.UtcNow);
         state.BatteryUpdated += () =>
         {
             history.Record(DateTime.UtcNow, state.Left, state.Right);
+            bool arrived = connectionPopup.OnBattery(DateTime.UtcNow, state.Left is not null || state.Right is not null);
             if (alerts.Check(state.Left, state.Right) is { } alert)
-                _tray.Notify(state.Name, Labels.LowBattery(alert));
+            {
+                // A warning must still get through when the card cannot show.
+                if (CanShowPopup)
+                    ShowPopup(BudsPopup.LowBattery(state, alert, OpenFlyout));
+                else
+                    _tray.Notify(state.Name, Labels.LowBattery(alert));
+            }
+            else if (arrived && settings.ConnectionPopup && CanShowPopup)
+            {
+                Log.Info("Showing the connection pop-up");
+                ShowPopup(BudsPopup.Connected(state, OpenFlyout));
+            }
         };
 
         _monitor = new DeviceMonitor();
         _monitor.BudsConnected += device =>
         {
+            connectionPopup.OnConnected(DateTime.UtcNow);
+            // Before the session changes the state: an open panel shows at once whether the hotkey is taken.
+            hotkey.Register();
             session.Start(device);
             _tray.Visible = true;
-            hotkey.Register();
             profiles.Start();
         };
         _monitor.BudsDisconnected += () =>
         {
+            connectionPopup.OnDisconnected(DateTime.UtcNow);
+            _popup?.Dismiss();
             profiles.Stop();
             hotkey.Unregister();
             session.Stop();
@@ -101,19 +123,53 @@ public partial class App : Application
             OpenFlyout();
     }
 
+    private bool CanShowPopup => _flyout is null && !UserPresence.IsBusy;
+
+    private void ShowPopup(BudsPopup popup)
+    {
+        _popup?.Dismiss();
+        _popup = popup;
+        popup.Closed += (_, _) =>
+        {
+            if (_popup == popup)
+                _popup = null;
+            if (_flyout is null)
+                ProcessMemory.Trim();
+        };
+        popup.Open();
+    }
+
     private void OpenFlyout()
     {
+        // Both live in the same corner.
+        _popup?.Dismiss();
+
         if (_flyout is null)
         {
-            _flyout = new Flyout(_state!, _session!, _history!, _profiles!, _hotkey!, Quit);
-            _flyout.Closed += (_, _) =>
+            var flyout = _flyout = new Flyout(_state!, _session!, _history!, _profiles!, _hotkey!, _settings!, SetLanguage, Quit);
+            flyout.Closed += (_, _) =>
             {
-                _flyout = null;
+                if (_flyout == flyout)
+                    _flyout = null;
                 _flyoutClosedAt = DateTime.Now;
                 ProcessMemory.Trim();
             };
         }
         _flyout.Open();
+    }
+
+    private void SetLanguage(AppLanguage language)
+    {
+        Strings.Select(language);
+        _settings!.Language = language;
+        _settings.Save();
+        _tray?.RefreshTexts();
+
+        // The panel is built with its texts. The new one opens first, so the app never loses the foreground.
+        Flyout? old = _flyout;
+        _flyout = null;
+        OpenFlyout();
+        old?.Dismiss();
     }
 
     private async Task TrimAfterStartupAsync()
@@ -140,6 +196,7 @@ public partial class App : Application
 
     private void Quit()
     {
+        _popup?.Dismiss();
         _profiles?.Stop();
         _hotkey?.Dispose();
         _tray?.Dispose();

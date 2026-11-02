@@ -5,23 +5,23 @@
         <!-- The saved profiles -->
         <StackPanel x:Name="ListView">
             <TextBlock Style="{StaticResource Caption}" Margin="0,4,0,6" TextWrapping="Wrap"
-                       Text="Пока приложение запущено, наушники держат выбранный режим. Когда оно закроется, режим вернётся." />
+                       Text="{Binding ProfilesHint}" />
             <StackPanel x:Name="Rows" />
-            <ToggleButton x:Name="AddButton" Style="{StaticResource Segment}" Margin="0,6,0,0" Content="ДОБАВИТЬ ПРИЛОЖЕНИЕ"
+            <ToggleButton x:Name="AddButton" Style="{StaticResource Segment}" Margin="0,6,0,0" Content="{Binding AddApp}"
                           Click="OnAddClick" />
         </StackPanel>
 
         <!-- Adding or changing one -->
         <StackPanel x:Name="Editor">
-            <TextBlock Style="{StaticResource Caption}" Margin="0,6,0,4" Text="ИМЯ ПРОЦЕССА ИЛИ ОДНО ИЗ ЗАПУЩЕННЫХ" />
-            <TextBox x:Name="ProcessBox" Style="{StaticResource Field}" AutomationProperties.Name="Имя процесса"
+            <TextBlock Style="{StaticResource Caption}" Margin="0,6,0,4" Text="{Binding ProcessPrompt}" />
+            <TextBox x:Name="ProcessBox" Style="{StaticResource Field}" AutomationProperties.Name="{Binding ProcessName}"
                      TextChanged="OnProcessChanged" />
             <ScrollViewer MaxHeight="108" Margin="-2,4,-2,0" VerticalScrollBarVisibility="Hidden" Focusable="False">
                 <UniformGrid x:Name="RunningGrid" Columns="2" VerticalAlignment="Top" />
             </ScrollViewer>
-            <TextBlock Style="{StaticResource Caption}" Margin="0,8,0,4" Text="ШУМОПОДАВЛЕНИЕ" />
+            <TextBlock Style="{StaticResource Caption}" Margin="0,8,0,4" Text="{Binding NoiseControlCaption}" />
             <UniformGrid x:Name="AncChoice" Rows="1" Margin="-2,0" />
-            <TextBlock Style="{StaticResource Caption}" Margin="0,8,0,4" Text="НИЗКАЯ ЗАДЕРЖКА" />
+            <TextBlock Style="{StaticResource Caption}" Margin="0,8,0,4" Text="{Binding LowLatencyCaption}" />
             <UniformGrid x:Name="LatencyChoice" Rows="1" Margin="-2,0" />
             <UniformGrid x:Name="EditorButtons" Rows="1" Margin="-2,10,-2,0" />
         </StackPanel>

@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using BudsTray.Bluetooth;
@@ -29,6 +27,8 @@ public partial class Flyout : Window
     private readonly BatteryHistory _history;
     private readonly ProfileRunner _profiles;
     private readonly GlobalHotkey _hotkey;
+    private readonly AppSettings _settings;
+    private readonly Action<AppLanguage> _setLanguage;
     private readonly Action _quit;
 
     private readonly Dictionary<AncMode, ToggleButton> _ancLevels = new();
@@ -45,16 +45,20 @@ public partial class Flyout : Window
     private Bud? _ringing;
     private bool _dismissing;
 
-    public Flyout(BudsState state, BudsSession session, BatteryHistory history, ProfileRunner profiles, GlobalHotkey hotkey, Action quit)
+    public Flyout(BudsState state, BudsSession session, BatteryHistory history, ProfileRunner profiles, GlobalHotkey hotkey, AppSettings settings, Action<AppLanguage> setLanguage, Action quit)
     {
         _state = state;
         _session = session;
         _history = history;
         _profiles = profiles;
         _hotkey = hotkey;
+        _settings = settings;
+        _setLanguage = setLanguage;
         _quit = quit;
 
+        DataContext = Strings.Current;
         InitializeComponent();
+        BuildLanguagePicker();
         BuildSegments();
         ProfilesSection.Attach(state, profiles);
 
@@ -91,7 +95,7 @@ public partial class Flyout : Window
             if (e.Key == Key.Escape)
                 Dismiss();
         };
-        SizeChanged += (_, _) => Place();
+        SizeChanged += (_, _) => TrayCorner.Place(this, Forms.Screen.FromPoint(Forms.Cursor.Position));
         LoadHistory();
         Render();
     }
@@ -100,7 +104,7 @@ public partial class Flyout : Window
     {
         MaxHeight = SystemParameters.WorkArea.Height;
         Show();
-        Place();
+        TrayCorner.Place(this, Forms.Screen.FromPoint(Forms.Cursor.Position));
         Activate();
         PlayOpenAnimation();
         _ = _session.RefreshAllAsync();
@@ -128,6 +132,28 @@ public partial class Flyout : Window
     }
 
     private void LoadHistory() => _samples = _history.Load(DateTime.UtcNow);
+
+    private void BuildLanguagePicker()
+    {
+        foreach (AppLanguage language in Enum.GetValues<AppLanguage>())
+        {
+            Strings strings = Strings.For(language);
+            var button = new ToggleButton
+            {
+                Content = strings.LanguageCode,
+                Style = (Style)FindResource("TextChoice"),
+                IsChecked = strings == Strings.Current,
+            };
+            AutomationProperties.SetName(button, strings.LanguageName);
+            button.Click += (_, _) =>
+            {
+                button.IsChecked = strings == Strings.Current;
+                if (strings != Strings.Current)
+                    _setLanguage(language);
+            };
+            LanguagePicker.Children.Add(button);
+        }
+    }
 
     private void BuildSegments()
     {
@@ -157,8 +183,8 @@ public partial class Flyout : Window
         _ringRight = Segment("RIGHT", FindGrid, () => OnRingClick(Bud.Right));
         _ringStop = Segment("STOP", FindGrid, StopRinging);
 
-        _rangeDay = Segment("24 ЧАСА", RangeGrid, () => _range = DayRange);
-        _rangeWeek = Segment("7 ДНЕЙ", RangeGrid, () => _range = WeekRange);
+        _rangeDay = Segment(Strings.Current.Range24Hours, RangeGrid, () => _range = DayRange);
+        _rangeWeek = Segment(Strings.Current.Range7Days, RangeGrid, () => _range = WeekRange);
     }
 
     private ToggleButton Segment(string text, Panel host, Action onClick)
@@ -218,6 +244,13 @@ public partial class Flyout : Window
 
     private void OnAutoStartClick(object sender, RoutedEventArgs e) => AutoStart.IsEnabled = AutoStartSwitch.IsChecked == true;
 
+    private void OnPopupClick(object sender, RoutedEventArgs e)
+    {
+        _settings.ConnectionPopup = ((ToggleButton)sender).IsChecked == true;
+        _settings.Save();
+        Render();
+    }
+
     private void OnQuitClick(object sender, RoutedEventArgs e) => _quit();
 
     private void Render()
@@ -231,8 +264,10 @@ public partial class Flyout : Window
 
         NameText.Text = (away || string.IsNullOrEmpty(_state.Name) ? "BudsTray" : _state.Name).ToUpperInvariant();
         StatusDot.Fill = (Brush)FindResource(online ? "Text" : "Red");
-        StatusText.Text = online ? "" : away ? "НЕТ СВЯЗИ" : "ПОДКЛЮЧАЮСЬ";
+        StatusText.Text = online ? "" : away ? Strings.Current.StatusAway : Strings.Current.StatusConnecting;
         AutoStartSwitch.IsChecked = AutoStart.IsEnabled;
+        OfflinePopupSwitch.IsChecked = _settings.ConnectionPopup;
+        PopupSwitch.IsChecked = _settings.ConnectionPopup;
 
         RenderBud(LeftNumber, LeftCaption, "LEFT", _state.Left);
         RenderBud(RightNumber, RightCaption, "RIGHT", _state.Right);
@@ -252,7 +287,7 @@ public partial class Flyout : Window
 
         RenderFind();
         FirmwareText.Text = string.IsNullOrEmpty(_state.Firmware) ? "" : $"FW {_state.Firmware}";
-        HotkeyText.Text = _hotkey.IsRegistered ? $"{GlobalHotkey.Label} · ANC/TRANSP" : $"{GlobalHotkey.Label} ЗАНЯТО";
+        HotkeyText.Text = _hotkey.IsRegistered ? $"{GlobalHotkey.Label} · ANC/TRANSP" : $"{GlobalHotkey.Label} {Strings.Current.HotkeyTaken}";
     }
 
     private void RenderForecast(BatteryEstimate estimate)
@@ -260,8 +295,8 @@ public partial class Flyout : Window
         bool charging = _state.Left is { Charging: true } || _state.Right is { Charging: true };
         SetVisible(ForecastCaption, !charging && (_state.Left is not null || _state.Right is not null));
         ForecastCaption.Text = estimate.Remaining is { } remaining
-            ? $"ХВАТИТ {Labels.Remaining(remaining)}"
-            : "ХВАТИТ -- · прогноз появится чуть позже";
+            ? string.Format(Strings.Current.TimeLeft, Labels.Remaining(remaining))
+            : Strings.Current.TimeLeftUnknown;
     }
 
     private void RenderHistory(BatteryEstimate estimate)
@@ -276,12 +311,12 @@ public partial class Flyout : Window
         _rangeDay.IsChecked = _range == DayRange;
         _rangeWeek.IsChecked = _range == WeekRange;
         RateCaption.Text = estimate.LeftPerHour is null && estimate.RightPerHour is null
-            ? "РАСХОД -- · пока мало данных"
-            : $"РАСХОД В ЧАС · L {Rate(estimate.LeftPerHour)} · R {Rate(estimate.RightPerHour)}";
+            ? Strings.Current.DrainUnknown
+            : $"{Strings.Current.DrainPerHour} · L {Rate(estimate.LeftPerHour)} · R {Rate(estimate.RightPerHour)}";
     }
 
     private static string Rate(double? percentPerHour) =>
-        percentPerHour is { } rate ? $"{Math.Round(rate):0} %" : "--";
+        percentPerHour is { } rate ? string.Format(Strings.Current.Percent, (int)Math.Round(rate)) : "--";
 
     private void RenderProfiles()
     {
@@ -300,15 +335,15 @@ public partial class Flyout : Window
             { Charging: false, Level: <= TrayGlyph.LowBatteryLevel } => "Red",
             _ => "Text",
         });
-        caption.Text = cell is { Charging: true } ? $"{name} · ЗАРЯД" : name;
+        caption.Text = cell is { Charging: true } ? $"{name} · {Strings.Current.Charging}" : name;
     }
 
     private string CaseText()
     {
         if (_state.CaseLevel is not { } level)
-            return "CASE -- · открой крышку, чтобы узнать заряд";
+            return Strings.Current.CaseUnknown;
         if (_state.CaseLive)
-            return _state.CaseCharging ? $"CASE {level} · ЗАРЯД" : $"CASE {level}";
+            return _state.CaseCharging ? $"CASE {level} · {Strings.Current.Charging}" : $"CASE {level}";
         return _state.CaseSeenAt is { } seen ? $"CASE {level} · {Labels.Age(seen, DateTime.Now)}" : $"CASE {level}";
     }
 
@@ -358,11 +393,11 @@ public partial class Flyout : Window
         _ringStop.IsChecked = false;
         _ringStop.IsEnabled = _ringing is not null;
         FindHint.Text = _armedRing is null
-            ? "Сигнал очень громкий. Сначала достань их из ушей."
-            : "Нажми ещё раз, чтобы включить сигнал.";
+            ? Strings.Current.FindWarning
+            : Strings.Current.FindConfirm;
     }
 
-    private string RingLabel(Bud bud, string name) => _armedRing == bud ? "ТОЧНО?" : name;
+    private string RingLabel(Bud bud, string name) => _armedRing == bud ? Strings.Current.RingConfirm : name;
 
     private static void SetVisible(UIElement element, bool visible) =>
         element.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
@@ -373,33 +408,4 @@ public partial class Flyout : Window
         Slide.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(10, 0, OpenDuration) { EasingFunction = ease });
         Card.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, OpenDuration) { EasingFunction = ease });
     }
-
-    /// <summary>Puts the panel in the screen corner next to the tray, whichever edge the taskbar is on.</summary>
-    private void Place()
-    {
-        if (!IsVisible)
-            return;
-
-        Forms.Screen screen = Forms.Screen.FromPoint(Forms.Cursor.Position);
-        System.Drawing.Rectangle area = screen.WorkingArea;
-        System.Drawing.Rectangle bounds = screen.Bounds;
-
-        DpiScale dpi = VisualTreeHelper.GetDpi(this);
-        int width = (int)Math.Ceiling(ActualWidth * dpi.DpiScaleX);
-        int height = (int)Math.Ceiling(ActualHeight * dpi.DpiScaleY);
-
-        int x = area.Left > bounds.Left ? area.Left : area.Right - width;
-        int y = area.Top > bounds.Top ? area.Top : area.Bottom - height;
-
-        IntPtr handle = new WindowInteropHelper(this).Handle;
-        SetWindowPos(handle, IntPtr.Zero, x, y, 0, 0, SwpNoSize | SwpNoZOrder | SwpNoActivate);
-    }
-
-    private const uint SwpNoSize = 0x0001;
-    private const uint SwpNoZOrder = 0x0004;
-    private const uint SwpNoActivate = 0x0010;
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowPos(IntPtr window, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
 }
